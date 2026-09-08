@@ -1,0 +1,12 @@
+{
+  "name": "china-social-media-research",
+  "version": "0.1.0",
+  "description": "Plan and run bounded, reproducible academic collections across six Chinese media platforms.",
+  "license": "MIT",
+  "keywords": [
+    "academic-research",
+    "social-media",
+    "data-collection"
+  ],
+  "skills": "./skills/"
+}

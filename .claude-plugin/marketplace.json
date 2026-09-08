@@ -1,0 +1,30 @@
+{
+  "name": "codiez-research-plugins",
+  "owner": {
+    "name": "CodiezHUANG",
+    "url": "https://github.com/CodiezHUANG"
+  },
+  "description": "Research-tooling plugins for bounded, reproducible academic data collection.",
+  "plugins": [
+    {
+      "name": "china-social-media-research",
+      "source": "./",
+      "displayName": "China Social Media Research",
+      "description": "Plan and run bounded, reproducible academic collections across six Chinese media platforms.",
+      "version": "0.1.0",
+      "author": {
+        "name": "CodiezHUANG",
+        "url": "https://github.com/CodiezHUANG"
+      },
+      "license": "MIT",
+      "category": "research",
+      "keywords": [
+        "academic-research",
+        "social-media",
+        "data-collection"
+      ],
+      "homepage": "https://github.com/CodiezHUANG/china-social-media-research",
+      "repository": "https://github.com/CodiezHUANG/china-social-media-research"
+    }
+  ]
+}

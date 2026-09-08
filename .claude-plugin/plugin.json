@@ -1,0 +1,18 @@
+{
+  "name": "china-social-media-research",
+  "displayName": "China Social Media Research",
+  "version": "0.1.0",
+  "description": "Plan and run bounded, reproducible academic collections across six Chinese media platforms.",
+  "author": {
+    "name": "CodiezHUANG",
+    "url": "https://github.com/CodiezHUANG"
+  },
+  "homepage": "https://github.com/CodiezHUANG/china-social-media-research",
+  "repository": "https://github.com/CodiezHUANG/china-social-media-research",
+  "license": "MIT",
+  "keywords": [
+    "academic-research",
+    "social-media",
+    "data-collection"
+  ]
+}

@@ -1,0 +1,37 @@
+# Authentication and browser state
+.env
+.env.*
+!.env.example
+*cookie*
+*Cookie*
+browser_data/
+user_data_dir/
+storage_state*.json
+
+# Collected data and run artifacts
+raw/
+output/
+outputs/
+snapshots/
+runs/
+*.jsonl
+*.csv
+*.db
+*.sqlite
+*.sqlite3
+
+# Local tools and environments
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.exe
+*.dll
+*.so
+node_modules/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
