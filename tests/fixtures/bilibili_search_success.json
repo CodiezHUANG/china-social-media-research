@@ -1,0 +1,30 @@
+{
+  "code": 0,
+  "data": {
+    "page": 1,
+    "numPages": 2,
+    "result": [
+      {
+        "bvid": "BV1000000001",
+        "title": "An <em class=\"keyword\">example</em> &amp; a film",
+        "description": "Synthetic <b>description</b>",
+        "mid": 123456,
+        "author": "synthetic-author-not-for-export",
+        "pubdate": 1704067200,
+        "duration": "3:20",
+        "play": 120,
+        "favorites": 4,
+        "review": 2,
+        "video_review": 9
+      },
+      {
+        "bvid": "BV1000000002",
+        "title": "Second synthetic result",
+        "description": "Fixture only",
+        "mid": "654321",
+        "pubdate": 1704153600,
+        "play": 15
+      }
+    ]
+  }
+}

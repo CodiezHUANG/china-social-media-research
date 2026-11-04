@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "china-media-crawler"
+dynamic = ["version"]
+description = "Bounded, reproducible Chinese media research collection"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = []
+
+[project.optional-dependencies]
+browser = ["playwright>=1.40,<2"]
+
+[project.scripts]
+cmc = "china_media_crawler.cli:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "china_media_crawler.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

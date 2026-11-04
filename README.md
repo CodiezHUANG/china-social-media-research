@@ -1,53 +1,44 @@
 # China Social Media Research
 
-A minimal skill-first plugin for planning and running bounded academic
-collections from six Chinese media platforms. It installs in both Codex and
-Claude Code from the same repository:
+A Python research collection tool with a shared CLI and plugins for Codex and
+Claude Code. Platform collectors share session handling, canonical records,
+bounded execution and manifests through one collection workflow.
 
-- Xiaohongshu / Rednote
-- Douyin
-- Weibo
-- Bilibili
-- Douban Movie
-- Maoyan Movie
-
-The plugin is an orchestration layer. It does not vendor third-party crawler
-repositories, browser profiles, credentials, or collected data.
-
-## Status
-
-This is an early, conservative `0.1.0` build. Commands preview their execution
-plan by default. A live collection occurs only when the caller adds
-`--execute`, and browser-based login may still require a separate interactive
-approval from the host environment. Visible browser runs must also add
-`--allow-visible-browser`; backend steps time out after 30 minutes by default.
-
-## Layout
-
-```text
-.codex-plugin/plugin.json        # Codex manifest
-.claude-plugin/
-  plugin.json                    # Claude Code manifest
-  marketplace.json               # Claude Code distribution entry
-commands/                        # Claude Code slash commands
-  csmr-preflight.md
-  csmr-plan.md
-skills/china-social-media-research/
-  SKILL.md
-  scripts/
-    bilibili_search_frame.py
-    collect.py
-    douban_reviews.py
-    maoyan_runner.py
-    preflight.py
-  references/
-    platforms.md
-```
-
-Both hosts read the same `skills/` directory. Only the manifests and the
-Claude Code slash commands differ.
+The tool covers six platforms and 14 collection surfaces. A route is not a
+promise of complete or continuous platform access.
 
 ## Install
+
+Create an independent Python 3.10+ environment in this checkout:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\cmc.exe --version
+.\.venv\Scripts\cmc.exe platforms
+```
+
+Install the browser extra only for platforms whose route uses
+Playwright:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e '.[browser]'
+.\.venv\Scripts\python.exe -m playwright install chromium
+```
+
+### Skill and plugin runtime
+
+The skill directory is an entry-point layer, not a self-contained copy of the
+collector. The bundled scripts resolve `china_media_crawler` in this order:
+
+1. `CMC_ROOT/src`, when `CMC_ROOT` points to a full checkout.
+2. The checkout's `src` directory, when the full repository is present.
+3. The installed `china-media-crawler` package in the active Python environment.
+
+A checkout works without installing the package. If only the skill subdirectory
+is copied into a host, install the core package in the Python interpreter that
+host uses, or set `CMC_ROOT` to a full checkout. A copied skill subdirectory
+alone does not contain the collector and exits with an actionable message.
 
 ### Claude Code
 
@@ -56,79 +47,113 @@ Claude Code slash commands differ.
 /plugin install china-social-media-research@codiez-research-plugins
 ```
 
-That adds the skill plus two slash commands:
+The marketplace installs the whole repository, so the bundled scripts find the
+collector in the plugin's own `src` directory without a separate package
+install. The plugin adds the skill and two slash commands:
 
-- `/csmr-preflight [platform]` — offline backend check, no network request.
-- `/csmr-plan [platform] [surface] [query]` — preview a bounded collection plan.
-  It never collects; a live run stays a separate, explicitly approved step.
+- `/csmr-preflight [platform]` — offline dependency check, no network request.
+- `/csmr-plan [platform] [surface] [query or id]` — preview a bounded plan. It
+  never collects; a live run stays a separate, explicitly approved step.
 
 ### Codex
 
-Install the plugin directory as a Codex skill plugin. It is discovered through
+Install this repository as a Codex skill plugin; it is discovered through
 `.codex-plugin/plugin.json`.
 
-### Script paths
-
-Scripts resolve relative to the skill directory, not your working directory.
-In Claude Code use `${CLAUDE_SKILL_DIR}/scripts/...`; from a plain checkout use
-`skills/china-social-media-research/scripts/...`.
-
-## Configure external backends
-
-The bundled scripts require Python 3.10 or newer. When `MEDIACRAWLER_ROOT` is
-configured, the Douban adapter automatically reuses MediaCrawler's
-Playwright-enabled virtual environment. For a standalone Douban setup instead:
+## Commands
 
 ```powershell
-python -m pip install -r skills/china-social-media-research/requirements.txt
-python -m playwright install chromium
+cmc preflight --platform douban
+cmc platforms --json
+cmc plan --platform bilibili --query 'example film' --max-items 20 --output '.\runs\bili' --purpose 'Reception pilot'
+cmc collect --platform bilibili --query 'example film' --output '.\runs\bili' --purpose 'Reception pilot' --execute
+cmc workflow --file examples/selected-platforms.json --output runs/selected-pilot
 ```
 
-Set only the backends needed for a run. The root, binary, and Python values are
-filesystem paths. Pseudonym salts are private local values and must not be
-committed or pasted into chat.
+`collect` previews by default. A live run requires `--execute`; browser-based
+collection runs headless. `plan` rejects `--execute`. The optional `--purpose`
+records a single-line research purpose in the plan and in `run_manifest.json`.
+
+## Platforms
+
+| Platform | Surfaces | Transport | Authentication | Required salt |
+|---|---|---|---|---|
+| Bilibili | search, detail, comments, danmaku | stdlib HTTP | anonymous / optional saved session | `BILI_PSEUDONYM_SALT` |
+| Douban | reviews, wantsee | stdlib HTTP | saved session or Cookie | optional `DOUBAN_PSEUDONYM_SALT` |
+| Maoyan | reviews | stdlib HTTP | anonymous | `MAOYAN_PSEUDONYM_SALT` |
+| Weibo | search, comments, hot | stdlib HTTP | anonymous / saved session / visitor | `WEIBO_PSEUDONYM_SALT` for search/comments; none for hot |
+| Douyin | search, detail | HTTP search; Playwright detail | saved session | `DOUYIN_PSEUDONYM_SALT` |
+| Xiaohongshu | search, detail | Playwright | saved session | `XHS_PSEUDONYM_SALT` |
+
+All collectors use explicit item/page budgets. Failures preserve partial data;
+the default is to stop. Bilibili content also supports explicit per-video
+continuation, returning a partial-failure status. See
+[content contracts](docs/BILIBILI_CONTENT.md). Existing output directories
+are never reused.
+
+## Sessions
+
+Manual login is user-operated and stored outside the checkout:
 
 ```powershell
-$env:MEDIACRAWLER_ROOT = 'C:\path\to\MediaCrawler'
-$env:WEIBO_CLI_BIN = 'C:\path\to\weibo.exe'
-$env:BILIBILI_CRAWLER_ROOT = 'C:\path\to\Bilibili-Crawl-Analyze'
-$env:MAOYAN_CRAWLER_ROOT = 'C:\path\to\MaoyanCrawler'
-$env:DOUBAN_PYTHON = 'C:\path\to\a\playwright-enabled\python.exe' # optional override
+cmc login --platform douban
+cmc login --platform bilibili
+cmc login --platform weibo
+cmc login --platform douyin
+cmc login --platform xhs
+cmc login --platform xhs --login-url https://www.rednote.com/
+cmc login --platform xhs --status
+cmc login --platform xhs --clear
 ```
 
-Bilibili and Maoyan runs also require `BILI_PSEUDONYM_SALT` and
-`MAOYAN_PSEUDONYM_SALT`, respectively. Supply them through an approved local
-secret manager or the current process environment; do not use a value copied
-from this repository.
+Collection uses `--session auto|required|off`. `auto` uses a saved session
+when available; `required` fails before work when no session exists; `off`
+forces anonymous collection where supported. Xiaohongshu sessions can contain
+both `xiaohongshu.com` and `rednote.com`; use `--login-url` to start the
+rednote login page, and the collector selects the host from the saved state.
+The login is saved only after the page reports a non-guest account. Weibo may use `--visitor-session` for anonymous visitor
+cookies. Credentials are never written to plans or manifests.
 
-Authentication material is read only from backend-specific process environment
-variables. Never put a Cookie value in a command, config file, issue, log, or
-research manifest.
+## Salts and privacy
 
-## Preview a plan
+Set platform-specific pseudonym salts privately in the process environment.
+Raw author IDs and display names are not exported. Review text, post text,
+comments and location fields are still user-generated research data and need
+appropriate handling.
+
+## Workflows
+
+A workflow file selects explicit tasks and runs them sequentially. The default
+stops on failure; `--on-error continue` continues other platforms while
+skipping later tasks on the failed platform. Each task keeps its own output and
+manifest.
+
+The task format, limits and continuation rules are described in
+[WORKFLOWS.md](docs/WORKFLOWS.md). Bilibili research runs additionally support
+`cmc bili-audit` and preview-first `cmc bili-supplement` for layer checks and
+explicit missing-layer/retry collection.
+
+## Testing
 
 ```powershell
-python skills/china-social-media-research/scripts/collect.py `
-  --platform douyin --surface search --query 'example film' `
-  --max-items 20 --comments-per-item 20 --output '.\runs\douyin-pilot'
+.\.venv\Scripts\python.exe -m unittest discover -s tests -t tests
 ```
 
-Run `preflight.py --platform all` to check backend availability without making
-network requests. See `references/platforms.md` for platform-specific examples
-and interpretation limits.
-
-The orchestrator forwards only a small platform-specific environment-variable
-allowlist to each third-party backend. It does not place credential values in
-the preview plan or run manifest.
+The suite runs offline against synthetic fixtures.
 
 ## Safety boundary
 
-The plugin is intended for small, documented, non-commercial research
-collections of public material. It must not be used to collect private data,
-evade login or verification controls, rotate accounts or proxies to defeat
-limits, or perform indiscriminate platform-wide harvesting.
+The tool collects small, documented samples for non-commercial academic
+research. Login is a manual step: run `cmc login`, sign in in the dedicated
+browser, and later runs reuse that session. If a platform asks for login or
+verification during a run, the run stops until you sign in again. The tool
+does not solve CAPTCHAs, rotate accounts or bypass access controls.
 
-## Third-party software
+Check each platform's user agreement before collecting, and get permission
+where it requires one.
 
-External backends retain their own licenses and terms. Read
-[`THIRD_PARTY.md`](THIRD_PARTY.md) before distribution or use.
+## Third-party dependencies
+
+Playwright and Chromium are upstream dependencies for browser-based routes.
+See [THIRD_PARTY.md](THIRD_PARTY.md). collector code is maintained in
+this repository.

@@ -1,0 +1,22 @@
+﻿{
+  "schema_version": "0.2",
+  "tasks": [
+    {
+      "id": "movie-reviews",
+      "platform": "maoyan",
+      "surface": "reviews",      "item_id": ["123456"],
+      "tags": "0",
+      "max_items": 3,
+      "max_pages": 1
+    },
+    {
+      "id": "video-search",
+      "platform": "bilibili",
+      "surface": "search",      "query": ["example film"],
+      "session": "off",
+      "max_items": 3,
+      "max_pages": 1
+    }
+  ]
+}
+

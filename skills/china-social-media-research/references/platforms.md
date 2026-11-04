@@ -1,138 +1,113 @@
-# Platform routing
+# Platform reference
 
-Read only the section for the requested platform.
-
-## Shared setup
-
-All examples preview a command. Add `--execute` only after reviewing the plan
-and authorizing the live collection. Use a new output directory for each run.
-
-The examples below write `scripts/collect.py` for readability. Prefix it with the
-resolved skill directory unless the shell is already in that directory:
-`${CLAUDE_SKILL_DIR}/scripts/collect.py` in Claude Code, or
-`skills/china-social-media-research/scripts/collect.py` from a repository
-checkout. See the SKILL.md "Script paths" section.
-
-## Xiaohongshu / Rednote
-
-Backend: separately installed MediaCrawler, configured with
-`MEDIACRAWLER_ROOT`.
-
-```powershell
-python scripts/collect.py --platform xhs --surface search `
-  --query 'example film' --max-items 20 --comments-per-item 20 `
-  --login qrcode --output '.\runs\xhs-pilot'
-
-python scripts/collect.py --platform xhs --surface detail `
-  --item-url 'https://www.xiaohongshu.com/explore/<NOTE_ID>?xsec_token=<TOKEN>&xsec_source=pc_search' `
-  --max-items 1 --comments-per-item 20 --output '.\runs\xhs-detail'
-```
-
-Detail collection requires the complete public note URL, including
-`xsec_token` and `xsec_source`. A bare note ID is rejected because the backend
-cannot reliably retrieve the note from it.
-
-Do not treat international-domain access as evidence that users are outside
-China. Record the backend domain, account state, network location, query, and
-capture time.
-
-## Douyin
-
-Backend: separately installed MediaCrawler, configured with
-`MEDIACRAWLER_ROOT`.
-
-```powershell
-python scripts/collect.py --platform douyin --surface search `
-  --query 'example film' --max-items 20 --comments-per-item 20 `
-  --login qrcode --output '.\runs\douyin-pilot'
-```
-
-The collected comments are first-level only by default. Engagement counters
-are time-specific platform values, not audience exposure.
+Use the bundled scripts or cmc CLI to preview collection; add --execute
+for an authorized live run. Resolve <SKILL_DIR> as described in SKILL.md. Salts and cookies are private process-environment values and must not
+be placed in commands or manifests.
 
 ## Weibo
 
-Search uses MediaCrawler. Public comments and the current hot list use the
-separately installed `weibo-cli`, configured with `WEIBO_CLI_BIN`.
+Surfaces: `hot`, `comments`, `search`. Hot is anonymous; comments/search use
+`WEIBO_PSEUDONYM_SALT` and may use a saved login or explicit
+`--visitor-session`.
 
 ```powershell
-python scripts/collect.py --platform weibo --surface search `
-  --query 'example film' --max-items 20 --comments-per-item 0 `
-  --login qrcode --output '.\runs\weibo-search'
-
-python scripts/collect.py --platform weibo --surface comments `
-  --item-id '<PUBLIC_POST_ID>' --comments-per-item 20 `
-  --output '.\runs\weibo-comments'
-
-python scripts/collect.py --platform weibo --surface hot `
-  --max-items 30 --output '.\runs\weibo-hot'
+python <SKILL_DIR>/scripts/login.py --platform weibo
+python <SKILL_DIR>/scripts/collect.py --platform weibo --surface hot --max-items 30 `
+  --output '.\runs\weibo-hot'
+python <SKILL_DIR>/scripts/collect.py --platform weibo --surface search `
+  --query 'example film' --session required --max-items 3 --max-pages 1 `
+  --output '.\runs\weibo-search'
+python <SKILL_DIR>/scripts/collect.py --platform weibo --surface comments `
+  --item-id '<PUBLIC_POST_ID>' --session required --comments-per-item 20 `
+  --max-pages 1 --output '.\runs\weibo-comments'
 ```
 
-A hot-list file is one snapshot, not a historical time series. Missing from a
-snapshot does not mean zero prior visibility.
+## Douyin
+
+Surfaces: `search`, `detail`. Login is required. Search uses stdlib HTTP with
+the saved cookie and `msToken`; detail uses our own Playwright response
+interception.
+
+```powershell
+python <SKILL_DIR>/scripts/login.py --platform douyin
+python <SKILL_DIR>/scripts/collect.py --platform douyin --surface search `
+  --query 'example film' --session required --max-items 3 --max-pages 1 `
+  --output '.\runs\douyin-search'
+python <SKILL_DIR>/scripts/collect.py --platform douyin --surface detail `
+  --item-id '<PUBLIC_AWEME_ID>' --session required `
+  --max-items 1 --output '.\runs\douyin-detail'
+```
+
+Set `DOUYIN_PSEUDONYM_SALT`.
 
 ## Bilibili
 
-Backend: a separately installed and reviewed Bilibili collector configured
-with `BILIBILI_CRAWLER_ROOT`. Search and detail/danmaku are deliberately split
-so the BV sampling frame can be inspected between them. Set a private
-`BILI_PSEUDONYM_SALT` in the local process environment before either stage.
+Surfaces: `search`, `detail`, `comments`, `danmaku`. Uses stdlib HTTP and
+`BILI_PSEUDONYM_SALT`; no browser or Cookie is required for collection.
 
 ```powershell
-python scripts/collect.py --platform bilibili --surface search `
-  --query 'example film' --max-items 20 --output '.\runs\bili-search'
-
-python scripts/collect.py --platform bilibili --surface detail `
-  --input-file '.\approved_bv.txt' --max-items 20 `
-  --output '.\runs\bili-detail'
+python <SKILL_DIR>/scripts/collect.py --platform bilibili --surface search `
+  --query 'example film' --max-items 20 --max-pages 2 `
+  --output '.\runs\bili-search'
+python <SKILL_DIR>/scripts/collect.py --platform bilibili --surface detail `
+  --item-id BV1000000001 --max-items 1 --output '.\runs\bili-detail'
+python <SKILL_DIR>/scripts/collect.py --platform bilibili --surface comments `
+  --item-id BV1000000001 --comments-mode first_page --comments-per-item 20 `
+  --max-pages 1 --output '.\runs\bili-comments'
+python <SKILL_DIR>/scripts/collect.py --platform bilibili --surface danmaku `
+  --item-id BV1000000001 --max-parts 1 --danmaku-per-item 100 `
+  --output '.\runs\bili-danmaku'
 ```
-
-Verify every BV before the detail step. Comments are a visible first-page
-sample. Danmaku are a capture-time snapshot, and an empty successful response
-must be distinguished from a failed request.
-
-The search frame is de-duplicated and truncated after collection so
-`--max-items` remains a real upper bound. Search records include the capture
-timestamp injected by the plan.
 
 ## Douban Movie
 
-When `MEDIACRAWLER_ROOT` is configured, the adapter reuses that project's
-Playwright-enabled virtual environment. Otherwise install the bundled adapter
-dependency with `python -m pip install -r requirements.txt`, install Chromium
-with `python -m playwright install chromium`, or set `DOUBAN_PYTHON` to an
-existing Playwright-enabled interpreter.
-
-The bundled Playwright adapter supports one verified movie subject. It caps a
-run at five pages, does not spoof browser automation signals, and stops on an
-access challenge.
+Surfaces: `reviews` (watched short comments), `wantsee` (want-to-watch
+comments). Collection uses stdlib HTTP; Playwright is only for manual login.
 
 ```powershell
-python scripts/collect.py --platform douban --surface reviews `
-  --item-id '<SUBJECT_ID>' --max-pages 5 --output '.\runs\douban-reviews'
-
-python scripts/collect.py --platform douban --surface wantsee `
-  --item-id '<SUBJECT_ID>' --max-pages 5 --output '.\runs\douban-wantsee'
+python <SKILL_DIR>/scripts/login.py --platform douban
+python <SKILL_DIR>/scripts/collect.py --platform douban --surface reviews `
+  --item-id '<SUBJECT_ID>' --session required --max-pages 2 --max-items 21 `
+  --output '.\runs\douban-reviews'
+python <SKILL_DIR>/scripts/collect.py --platform douban --surface wantsee `
+  --item-id '<SUBJECT_ID>' --session required --max-pages 1 --max-items 3 `
+  --output '.\runs\douban-wantsee'
 ```
 
-Verify the subject using title, year, and creator metadata before collection.
-Short reviews and “want to watch” comments are different populations and must
-remain separate.
+Verify the subject before collection. `reviews` and `wantsee` are different
+populations and must remain separate.
 
 ## Maoyan Movie
 
-Backend: separately installed MaoyanCrawler configured with
-`MAOYAN_CRAWLER_ROOT`. The adapter uses its bounded tag-pool runner.
+Surface: `reviews`. Anonymous stdlib HTTP with `MAOYAN_PSEUDONYM_SALT`.
 
 ```powershell
-# Set MAOYAN_PSEUDONYM_SALT privately in the current process first.
-python scripts/collect.py --platform maoyan --surface reviews `
-  --item-id '<MOVIE_ID>' --tags '0' --max-pages 5 `
-  --output '.\runs\maoyan-reviews'
+python <SKILL_DIR>/scripts/collect.py --platform maoyan --item-id '<MOVIE_ID>' `
+  --tags '0,1' --max-items 20 --max-pages 2 --output '.\runs\maoyan'
 ```
 
-Tag pools can overlap and their reported totals must not be added. Keep the
-salt private and reuse it only when author linkage across approved runs is
-methodologically necessary. The external runner temporarily needs the salt in
-memory; the bundled wrapper prevents that value from being serialized into its
-checkpoint and performs a defensive scrub after the process returns.
+## Xiaohongshu / Rednote
+
+Surfaces: `search`, `detail`. Login is required. The saved session supports
+both `xiaohongshu.com` and `rednote.com`; the host is selected automatically.
+Collection uses our own Playwright context and response interception.
+
+```powershell
+python <SKILL_DIR>/scripts/login.py --platform xhs
+python <SKILL_DIR>/scripts/collect.py --platform xhs --surface search `
+  --query 'example film' --session required --max-items 3 --max-pages 1 `
+  --output '.\runs\xhs-search'
+python <SKILL_DIR>/scripts/collect.py --platform xhs --surface detail `
+  --item-url 'https://www.xiaohongshu.com/explore/<NOTE_ID>?xsec_token=<TOKEN>&xsec_source=pc_search' `
+  --session required --max-items 1 --output '.\runs\xhs-detail'
+```
+
+Set `XHS_PSEUDONYM_SALT`. Detail requires the complete public note URL with
+`xsec_token` and `xsec_source`; a bare note ID is rejected.
+
+## General limits
+
+Use small, documented samples. Empty pages, page limits, item caps and
+observed ends are distinct stop reasons. A failed run preserves completed
+records and writes safe failure metadata. Do not retry around login, security
+or verification pages.
